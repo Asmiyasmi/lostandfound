@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper Functions ──────────────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // ── Users Collection ──────────────────────────────────────────────────────
+    // Any authenticated user can read profiles (for leaderboard, admin panel).
+    // Only the user themselves can write to their own profile document.
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+
+    // ── Lost Items Collection ─────────────────────────────────────────────────
+    // Authenticated users can read all and create new posts.
+    // Only the post owner can update or delete their own posts.
+
+    match /lost_items/{itemId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    // ── Found Items Collection ────────────────────────────────────────────────
+    // Authenticated users can read all and create new posts.
+    // Only the post owner can update or delete their own posts.
+
+    match /found_items/{itemId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    // ── Claims Collection ─────────────────────────────────────────────────────
+    // Authenticated users can read all claims and submit new ones.
+    // Any authenticated user can update claims (for admin approval workflow).
+
+    match /claims/{claimId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && isOwner(resource.data.claimerId);
+    }
+
+    // ── Notifications Collection ──────────────────────────────────────────────
+    // Users can only read and manage their own notifications.
+    // Any authenticated user can create notifications (for system-generated alerts).
+
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+  }
+}
